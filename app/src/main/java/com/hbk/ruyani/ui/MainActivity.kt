@@ -1,13 +1,16 @@
 package com.hbk.ruyani.ui
 
+import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -28,8 +31,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Layar Utama (Pusat Kendali & Pengaturan Harimau Braille Keyboard).
- * Mengatur aktivasi keyboard sistem Android, Google Sign-In (Cloud Sync),
- * kalibrasi titik, dan in-app auto-update langsung dari GitHub Releases.
+ * Mengatur aktivasi keyboard Android, cadangan pengaturan, Google Sign-In,
+ * dan in-app auto-update langsung dari GitHub Releases secara fail-safe (tahan crash).
  */
 class MainActivity : AppCompatActivity() {
 
@@ -43,6 +46,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSyncStatus: TextView
     private lateinit var btnLoginGoogle: Button
     private lateinit var btnLogout: Button
+    private lateinit var btnExportSettings: Button
+    private lateinit var btnImportSettings: Button
     private lateinit var btnCalibrate: Button
     private lateinit var tvCurrentVersion: TextView
     private lateinit var btnCheckUpdate: Button
@@ -50,12 +55,13 @@ class MainActivity : AppCompatActivity() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             val account = task.getResult(ApiException::class.java)
             handleGoogleSignInSuccess(account)
-        } catch (e: ApiException) {
-            Toast.makeText(this, "Login Google gagal: ${e.message}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.w("MainActivity", "Google sign-in canceled or failed: ${e.message}")
+            Toast.makeText(this, "Login Google belum aktif atau dibatalkan.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -67,14 +73,14 @@ class MainActivity : AppCompatActivity() {
         updateManager = AppUpdateManager(this)
 
         initViews()
-        setupGoogleSignIn()
+        setupGoogleSignInSafe()
         setupActions()
     }
 
     override fun onResume() {
         super.onResume()
-        updateKeyboardStatus()
-        updateAuthStatus()
+        updateKeyboardStatusSafe()
+        updateAuthStatusSafe()
     }
 
     private fun initViews() {
@@ -84,6 +90,8 @@ class MainActivity : AppCompatActivity() {
         tvSyncStatus = findViewById(R.id.tvSyncStatus)
         btnLoginGoogle = findViewById(R.id.btnLoginGoogle)
         btnLogout = findViewById(R.id.btnLogout)
+        btnExportSettings = findViewById(R.id.btnExportSettings)
+        btnImportSettings = findViewById(R.id.btnImportSettings)
         btnCalibrate = findViewById(R.id.btnCalibrate)
         tvCurrentVersion = findViewById(R.id.tvCurrentVersion)
         btnCheckUpdate = findViewById(R.id.btnCheckUpdate)
@@ -91,115 +99,187 @@ class MainActivity : AppCompatActivity() {
         tvCurrentVersion.text = "Versi Terpasang: v${BuildConfig.VERSION_NAME}"
     }
 
-    private fun setupGoogleSignIn() {
+    private fun setupGoogleSignInSafe() {
         try {
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .build()
             googleSignInClient = GoogleSignIn.getClient(this, gso)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (e: Throwable) {
+            Log.w("MainActivity", "Google Play Services sign-in unavailable: ${e.message}")
         }
     }
 
     private fun setupActions() {
         // 1. Tombol Aktifkan Keyboard di Pengaturan
         btnEnableIme.setOnClickListener {
-            val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
-            startActivity(intent)
+            try {
+                startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+            } catch (e: Throwable) {
+                Toast.makeText(this, "Buka Setelan -> Bahasa & Masukan -> Keyboard", Toast.LENGTH_LONG).show()
+            }
         }
 
         // 2. Tombol Pilih Keyboard Utama
         btnSelectIme.setOnClickListener {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showInputMethodPicker()
+            try {
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showInputMethodPicker()
+            } catch (e: Throwable) {
+                Toast.makeText(this, "Tidak dapat membuka pemilih keyboard", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // 3. Tombol Login Google
         btnLoginGoogle.setOnClickListener {
-            googleSignInClient?.signInIntent?.let { intent ->
-                googleSignInLauncher.launch(intent)
+            try {
+                googleSignInClient?.signInIntent?.let { intent ->
+                    googleSignInLauncher.launch(intent)
+                } ?: run {
+                    Toast.makeText(this, "Layanan Google Sign-In sedang tidak tersedia.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Throwable) {
+                Toast.makeText(this, "Login Google tidak dapat diluncurkan.", Toast.LENGTH_SHORT).show()
             }
         }
 
         // 4. Tombol Logout
         btnLogout.setOnClickListener {
-            cloudSyncManager.signOut()
-            googleSignInClient?.signOut()
-            updateAuthStatus()
-            Toast.makeText(this, "Berhasil keluar akun", Toast.LENGTH_SHORT).show()
+            try {
+                cloudSyncManager.signOut()
+                googleSignInClient?.signOut()
+                updateAuthStatusSafe()
+                Toast.makeText(this, "Berhasil keluar akun", Toast.LENGTH_SHORT).show()
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
         }
 
-        // 5. Tombol Kalibrasi
+        // 5. Bagikan / Cadangkan Pengaturan (Export)
+        btnExportSettings.setOnClickListener {
+            exportSettings()
+        }
+
+        // 6. Pulihkan Pengaturan (Import)
+        btnImportSettings.setOnClickListener {
+            showImportDialog()
+        }
+
+        // 7. Tombol Kalibrasi 6 Titik
         btnCalibrate.setOnClickListener {
             startActivity(Intent(this, CalibrationActivity::class.java))
         }
 
-        // 6. Tombol Periksa Pembaruan
+        // 8. Tombol Periksa Pembaruan
         btnCheckUpdate.setOnClickListener {
             checkAppUpdate(isManualCheck = true)
         }
     }
 
+    private fun exportSettings() {
+        try {
+            val json = cloudSyncManager.exportSettingsToJsonString()
+            val sendIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, json)
+                type = "text/plain"
+            }
+            val shareIntent = Intent.createChooser(sendIntent, "Cadangkan Pengaturan Harimau Braille ke...")
+            startActivity(shareIntent)
+        } catch (e: Throwable) {
+            Toast.makeText(this, "Gagal mengekspor: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showImportDialog() {
+        val input = EditText(this).apply {
+            hint = "Tempel teks cadangan JSON di sini..."
+            setPadding(32, 32, 32, 32)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Pulihkan Pengaturan")
+            .setMessage("Tempelkan teks cadangan yang Anda simpan sebelumnya:")
+            .setView(input)
+            .setPositiveButton("Pulihkan") { _, _ ->
+                val text = input.text.toString().trim()
+                if (text.isNotEmpty() && cloudSyncManager.importSettingsFromJsonString(text)) {
+                    Toast.makeText(this, "Pengaturan berhasil dipulihkan!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Format teks cadangan tidak valid.", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
     private fun handleGoogleSignInSuccess(account: GoogleSignInAccount) {
         val idToken = account.idToken
         lifecycleScope.launch {
-            if (idToken != null) {
-                val credential = GoogleAuthProvider.getCredential(idToken, null)
-                val result = cloudSyncManager.signInWithGoogleCredential(credential)
-                if (result.isSuccess) {
-                    Toast.makeText(this@MainActivity, getString(R.string.sync_success), Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(this@MainActivity, "Tersambung lokal: ${account.email}", Toast.LENGTH_SHORT).show()
+            try {
+                if (idToken != null && cloudSyncManager.isFirebaseAvailable) {
+                    val credential = GoogleAuthProvider.getCredential(idToken, null)
+                    cloudSyncManager.signInWithGoogleCredential(credential)
                 }
-            } else {
-                Toast.makeText(this@MainActivity, "Login lokal: ${account.email}", Toast.LENGTH_SHORT).show()
+            } catch (e: Throwable) {
+                Log.w("MainActivity", "Firebase auth fallback: ${e.message}")
             }
-            updateAuthStatus()
+            Toast.makeText(this@MainActivity, "Tersambung: ${account.email}", Toast.LENGTH_SHORT).show()
+            updateAuthStatusSafe()
         }
     }
 
-    private fun updateKeyboardStatus() {
-        val imeId = "${packageName}/.ime.HarimauBrailleImeService"
-        val enabledImeList = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_INPUT_METHODS) ?: ""
-        val isEnabled = enabledImeList.contains(packageName)
+    private fun updateKeyboardStatusSafe() {
+        try {
+            val enabledImeList = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_INPUT_METHODS) ?: ""
+            val isEnabled = enabledImeList.contains(packageName)
 
-        val currentIme = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: ""
-        val isDefault = currentIme.contains(packageName)
+            val currentIme = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: ""
+            val isDefault = currentIme.contains(packageName)
 
-        if (!isEnabled) {
-            tvKeyboardStatus.text = getString(R.string.status_keyboard_disabled)
-            tvKeyboardStatus.setTextColor(getColor(R.color.error))
-            btnEnableIme.visibility = View.VISIBLE
-            btnSelectIme.visibility = View.GONE
-        } else if (!isDefault) {
-            tvKeyboardStatus.text = getString(R.string.status_not_default)
-            tvKeyboardStatus.setTextColor(getColor(R.color.accent))
-            btnEnableIme.visibility = View.GONE
-            btnSelectIme.visibility = View.VISIBLE
-        } else {
-            tvKeyboardStatus.text = "Keyboard Aktif & Siap Digunakan!"
-            tvKeyboardStatus.setTextColor(getColor(R.color.success))
-            btnEnableIme.visibility = View.GONE
-            btnSelectIme.visibility = View.VISIBLE
+            if (!isEnabled) {
+                tvKeyboardStatus.text = getString(R.string.status_keyboard_disabled)
+                tvKeyboardStatus.setTextColor(getColor(R.color.error))
+                btnEnableIme.visibility = View.VISIBLE
+                btnSelectIme.visibility = View.GONE
+            } else if (!isDefault) {
+                tvKeyboardStatus.text = getString(R.string.status_not_default)
+                tvKeyboardStatus.setTextColor(getColor(R.color.accent))
+                btnEnableIme.visibility = View.GONE
+                btnSelectIme.visibility = View.VISIBLE
+            } else {
+                tvKeyboardStatus.text = "Keyboard Aktif & Siap Digunakan!"
+                tvKeyboardStatus.setTextColor(getColor(R.color.success))
+                btnEnableIme.visibility = View.GONE
+                btnSelectIme.visibility = View.VISIBLE
+            }
+        } catch (e: Throwable) {
+            tvKeyboardStatus.text = "Harimau Braille Keyboard"
         }
     }
 
-    private fun updateAuthStatus() {
-        val user = cloudSyncManager.currentUser
-        val googleAccount = GoogleSignIn.getLastSignedInAccount(this)
+    private fun updateAuthStatusSafe() {
+        try {
+            val user = cloudSyncManager.currentUser
+            val googleAccount = try {
+                GoogleSignIn.getLastSignedInAccount(this)
+            } catch (e: Throwable) {
+                null
+            }
 
-        if (user != null || googleAccount != null) {
-            val email = user?.email ?: googleAccount?.email ?: "Pengguna"
-            tvSyncStatus.text = getString(R.string.sync_status_logged_in, email)
-            tvSyncStatus.setTextColor(getColor(R.color.success))
-            btnLoginGoogle.visibility = View.GONE
-            btnLogout.visibility = View.VISIBLE
-        } else {
-            tvSyncStatus.text = getString(R.string.sync_status_not_logged_in)
-            tvSyncStatus.setTextColor(getColor(R.color.text_secondary))
-            btnLoginGoogle.visibility = View.VISIBLE
-            btnLogout.visibility = View.GONE
+            if (user != null || googleAccount != null) {
+                val email = user?.email ?: googleAccount?.email ?: "Pengguna"
+                tvSyncStatus.text = getString(R.string.sync_status_logged_in, email)
+                tvSyncStatus.setTextColor(getColor(R.color.success))
+                btnLoginGoogle.visibility = View.GONE
+                btnLogout.visibility = View.VISIBLE
+            } else {
+                tvSyncStatus.text = getString(R.string.sync_status_not_logged_in)
+                tvSyncStatus.setTextColor(getColor(R.color.text_secondary))
+                btnLoginGoogle.visibility = View.VISIBLE
+                btnLogout.visibility = View.GONE
+            }
+        } catch (e: Throwable) {
+            tvSyncStatus.text = "Pengaturan tersimpan lokal di HP Anda."
         }
     }
 

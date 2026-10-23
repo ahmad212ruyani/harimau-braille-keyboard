@@ -110,7 +110,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Card 3: Cloud Sync & Akun Google -->
+        <!-- Card 3: Cloud Sync & Cadangan Pengaturan -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -159,6 +159,35 @@
                     android:text="@string/btn_logout"
                     android:textColor="@color/error"
                     android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnExportSettings"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="Bagikan / Backup"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_light" />
+
+                    <Button
+                        android:id="@+id/btnImportSettings"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="Pulihkan Setelan"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_light" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -191,7 +220,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:gravity="center"
-                    android:text="Versi Terpasang: v1.0.0"
+                    android:text="Versi Terpasang: v1.0.1"
                     android:textColor="@color/text_secondary"
                     android:textSize="13sp" />
 
