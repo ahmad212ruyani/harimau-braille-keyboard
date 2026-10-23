@@ -1,0 +1,53 @@
+<resources>
+    <string name="app_name">Harimau Braile Keyboard</string>
+    <string name="ime_service_name">Harimau Braille Keyboard</string>
+    <string name="subtype_id_id">Bahasa Indonesia (Braille)</string>
+    <string name="subtype_en_us">English (Braille)</string>
+
+    <!-- UI Strings -->
+    <string name="welcome_title">Selamat Datang di Harimau Braille Keyboard</string>
+    <string name="welcome_subtitle">Papan ketik Braille multi-sentuh dengan Cloud Sync dan pembaruan otomatis.</string>
+    <string name="btn_enable_ime">1. Aktifkan Keyboard di Pengaturan</string>
+    <string name="btn_select_ime">2. Pilih Harimau Braille Keyboard</string>
+    <string name="btn_calibrate">Kalibrasi Titik Jari (6 Titik)</string>
+    <string name="btn_check_update">Periksa Pembaruan Aplikasi</string>
+    <string name="sandbox_hint">Ketik di sini untuk menguji coba papan ketik Braille...</string>
+    <string name="status_keyboard_disabled">Status: Keyboard belum diaktifkan di setelan sistem</string>
+    <string name="status_keyboard_enabled">Status: Keyboard telah aktif!</string>
+    <string name="status_not_default">Harimau Braille belum menjadi keyboard utama</string>
+    <string name="status_is_default">Harimau Braille adalah keyboard utama aktif</string>
+
+    <!-- Cloud Sync & Auth Strings -->
+    <string name="cloud_sync_title">Sinkronisasi Awan (Cloud Sync)</string>
+    <string name="btn_login_google">Masuk dengan Akun Google</string>
+    <string name="btn_logout">Keluar Akun</string>
+    <string name="sync_status_not_logged_in">Belum masuk akun. Masuk agar pengaturan otomatis tersimpan di cloud saat ganti HP.</string>
+    <string name="sync_status_logged_in">Masuk sebagai: %1$s\nPengaturan tersinkronisasi di Cloud.</string>
+    <string name="syncing_now">Sedang menyinkronkan data...</string>
+    <string name="sync_success">Pengaturan berhasil dipulihkan dari Cloud!</string>
+    <string name="sync_failed">Gagal menyinkronkan cloud, menggunakan pengaturan lokal.</string>
+
+    <!-- Calibration Strings -->
+    <string name="calibration_title">Kalibrasi Titik Jari</string>
+    <string name="calibration_instruction">Tempelkan 6 jari Anda secara bersamaan pada layar untuk memposisikan titik 1, 2, 3 (kiri) dan 4, 5, 6 (kanan).</string>
+    <string name="btn_save_calibration">Simpan Posisi Titik</string>
+    <string name="btn_reset_calibration">Reset ke Standar</string>
+
+    <!-- Auto-Update Strings -->
+    <string name="update_checking">Memeriksa rilis terbaru...</string>
+    <string name="update_available_title">Pembaruan Tersedia (%1$s)</string>
+    <string name="update_up_to_date">Aplikasi sudah dalam versi terbaru (%1$s).</string>
+    <string name="btn_update_now">Perbarui Sekarang</string>
+    <string name="btn_update_later">Nanti Saja</string>
+    <string name="downloading_update">Mengunduh pembaruan: %1$d%%</string>
+
+    <!-- Accessibility / TTS Announcements -->
+    <string name="tts_space">Spasi</string>
+    <string name="tts_deleted">Dihapus</string>
+    <string name="tts_word_deleted">Kata dihapus</string>
+    <string name="tts_newline">Baris baru</string>
+    <string name="tts_caps_on">Huruf besar aktif</string>
+    <string name="tts_caps_off">Huruf kecil</string>
+    <string name="tts_number_mode">Mode angka</string>
+    <string name="tts_keyboard_hidden">Papan ketik disembunyikan</string>
+</resources>
