@@ -20,7 +20,7 @@ android {
             useSupportLibrary true
         }
 
-        buildConfigField "String", "GITHUB_REPO_OWNER", "\"ruyani\""
+        buildConfigField "String", "GITHUB_REPO_OWNER", "\"ahmad212ruyani\""
         buildConfigField "String", "GITHUB_REPO_NAME", "\"harimau-braille-keyboard\""
     }
 
